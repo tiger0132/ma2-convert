@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/swcrc",
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "dynamicImport": true,
+      "dts": true
+    },
+    "target": "es2022",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    },
+    "loose": true,
+    "externalHelpers": true
+  },
+  // "minify": true,
+  "sourceMaps": true,
+  "module": {
+    "type": "es6",
+    "strict": true,
+    "strictMode": true
+  }
+}
