@@ -1,4 +1,4 @@
-import { Ma2File } from '../ma2';
+import { Ma2File } from '.';
 import { Ma2Record } from './Ma2Record';
 import { Def as Ma2RecordDef, fmt } from './RecordId';
 
@@ -14,12 +14,10 @@ function formatVersion({ major, minor, release }: Version) {
 }
 
 export class Ma2Header {
-	format = 'MA2' as const; // C2S MA2 M2S SDT SCT SZT SRT
+	readonly format = 'MA2'; // C2S MA2 M2S SDT SCT SZT SRT
 
-	notesName = '';
 	version: [string, string] = ['', ''];
 
-	creator = '';
 	bpmInfo: BPMInfo = { defaultBPM: 150, minBPM: 150, maxBPM: 150, firstBPM: 150 };
 	metInfo: MeterInfo = { denomi: 4, num: 4 };
 
@@ -27,44 +25,38 @@ export class Ma2Header {
 	clickFirst = 0;
 	// progJudgeBPM = 240; // not used somehow
 	// isTutorial = false;
-	isFes = false;
-	touchNum = 0;
-	maxNotes = 0;
+	isFes = false; // 看起来被弃用了
 
-	constructor(private ma2File: Ma2File) { }
+	// touchNum = 0;
+	// maxNotes = 0;
+
+	constructor() { }
 	load(rec: Ma2Record) {
 		switch (rec.recId) {
-		case Ma2RecordDef.VERSION:
-			for (let i = 0; i < 2; i++) this.version[i] = rec.getStr(i + 1);
-			break;
-		case Ma2RecordDef.FES_MODE:
-			this.isFes = rec.getS32(1) > 0;
-			break;
-		case Ma2RecordDef.BPM_DEF:
-			this.bpmInfo.firstBPM = rec.getF32(1);
-			this.bpmInfo.defaultBPM = rec.getF32(2);
-			this.bpmInfo.maxBPM = rec.getF32(3);
-			this.bpmInfo.minBPM = rec.getF32(4);
-			break;
-		case Ma2RecordDef.MET_DEF:
-			this.metInfo.denomi = rec.getS32(1);
-			this.metInfo.num = rec.getS32(2);
-			break;
-		case Ma2RecordDef.RESOLUTION:
-			this.resolutionTime = rec.getS32(1);
-			break;
-		case Ma2RecordDef.CLK_DEF:
-			this.clickFirst = rec.getS32(1);
-			break;
-		case Ma2RecordDef.T_NUM_ALL:
-			this.maxNotes = rec.getS32(1);
-			break;
-		case Ma2RecordDef.T_REC_THO:
-		case Ma2RecordDef.T_REC_TTP:
-			this.touchNum += rec.getS32(1);
-			break;
-		default:
-			return false;
+			case Ma2RecordDef.VERSION:
+				for (let i = 0; i < 2; i++) this.version[i] = rec.getStr(i + 1);
+				break;
+			case Ma2RecordDef.FES_MODE:
+				this.isFes = rec.getS32(1) > 0;
+				break;
+			case Ma2RecordDef.BPM_DEF:
+				this.bpmInfo.firstBPM = rec.getF32(1);
+				this.bpmInfo.defaultBPM = rec.getF32(2);
+				this.bpmInfo.maxBPM = rec.getF32(3);
+				this.bpmInfo.minBPM = rec.getF32(4);
+				break;
+			case Ma2RecordDef.MET_DEF:
+				this.metInfo.denomi = rec.getS32(1);
+				this.metInfo.num = rec.getS32(2);
+				break;
+			case Ma2RecordDef.RESOLUTION:
+				this.resolutionTime = rec.getS32(1);
+				break;
+			case Ma2RecordDef.CLK_DEF:
+				this.clickFirst = rec.getS32(1);
+				break;
+			default:
+				return false;
 		}
 		return true;
 	}

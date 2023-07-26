@@ -13,3 +13,11 @@ export type OptionalFields<T> = {
 export const safeAssign = <T, U extends keyof T>(dst: T, key: U, src: T[U]) => dst[key] = src;
 
 export function isKeyOf<T extends object>(value: any, def: T): value is keyof T { return value in def; }
+export function notVoid<T>(val: T | null | undefined): val is T { return val !== null && val !== undefined; }
+
+const gcd2 = (a: number, b: number): number => b ? gcd2(b, a % b) : a;
+export const gcd = (...v: number[]): number =>
+	!v.length ? 1 :
+		v.length === 1 ? v[0] :
+			v.length === 2 ? gcd2(v[0], v[1]) :
+				gcd(gcd2(v[0], v[1]), ...v.slice(2));
