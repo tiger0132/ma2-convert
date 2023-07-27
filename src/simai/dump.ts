@@ -1,16 +1,18 @@
 import { ok } from 'assert';
+import debug from 'debug';
 
 import { Slide as Ma2Slide, isHoldNote, isSlideNote, isTapNote } from '../ma2/Ma2Notes';
 import { TouchEffectType, TouchSensorType } from '../ma2/Ma2Record';
 import { OptionalFields, gcd, notVoid } from '../lib/utils';
 import { Ma2File } from '../ma2';
-import { BPM, Hold, Len, Modifier, Note, SimaiSlideType, Slide, Tap, TouchHold, TouchTap } from '.';
+import { BPM, Hold, Len, Modifier, Note, SimaiSlideType, Slide, Tap, TouchHold, TouchTap } from './index';
 import { Def } from '@/ma2/NotesTypeId';
 import { SlideType as Ma2SlideType } from '../ma2/RecordId';
+import { inspect } from 'util';
 
 export const modifierList = Object.freeze([
 	0, 2, 1, 0, 1, 0, 8, 10, 9, 0, 0, 3, 2, 3, 2, 1, 3, 11, 0,
-] satisfies Omit<Record<Def, number>, Def.Invalid>);
+] satisfies Record<Def, number>);
 
 const bpm = (bpm: number): BPM => ({ type: 'bpm', bpm });
 const touchTap = (pos: string, mod: number): TouchTap => ({ type: 'touchtap', pos, mod });
@@ -24,60 +26,75 @@ const defaultConfig = Object.freeze({
 } satisfies OptionalFields<Config>);
 
 const getPos = (x: { sensor: number, pos: number }) => `${TouchSensorType[x.sensor]}${x.pos + 1}`;
+const log = debug('dump');
 function getLen(ma2: Ma2File, tick: number, len: number): Len | undefined {
 	if (!len) return;
 	const bpmList = ma2.composition.bpmList;
-	const curBpmIdx = bpmList.findLastIndex(x => x.tick < tick);
+	const curBpmIdx = bpmList.findLastIndex(x => x.tick <= tick);
 
-	let p = 0, q = ma2.header.resolutionTime * bpmList[curBpmIdx].bpm, d;
+	// fuck
+	// if (isInt(bpmList[curBpmIdx].bpm)) {
+	// 	if (curBpmIdx < bpmList.length - 1 && bpmList[curBpmIdx + 1].tick < tick + len)
+	// 		ok(false, 'fuck');
+
+	// 	let p = len, q = ma2.header.resolutionTime, d;
+	// 	d = gcd(p, q);
+	// 	p /= d, q /= d;
+	// 	return { denomi: q, num: p };
+	// }
+
+	log('');
+	log({ tick, len });
+	let p = 0, q = ma2.header.resolutionTime * (bpmList[curBpmIdx].bpm * 1e3 | 0), d;
 	for (let i = curBpmIdx; i < bpmList.length; i++) {
 		const { bpm } = bpmList[i];
 		const duration = i === bpmList.length - 1 ?
 			Infinity :
-			bpmList[i + 1].tick - bpmList[i].tick;
+			bpmList[i + 1].tick - Math.max(tick, bpmList[i].tick);
 		const ticks = Math.min(len, duration);
 
-		p += bpm * ticks;
+		log({ bpm, ticks });
+		p += (bpm * 1e3 | 0) * ticks;
 		if (!(len -= ticks)) break;
 	}
+	log({ p, q });
 	d = gcd(p, q);
 	p /= d, q /= d;
+	log({ p, q });
 
 	return { denomi: q, num: p };
 }
 
-// TODO: 目前还有着每行只有开头一个分音标记的软限制
-const fmtLen = (x?: Len) => x ? `[${x.denomi}:${x.num}]` : '';
+const fmtLen = (x?: Len, bpm?: number) => x ? `[${bpm !== undefined ? `${bpm}##` : ''}${x.denomi}:${x.num}]` : '';
 const fmtMod = ({ mod }: { mod: number }) => [
 	(mod & Modifier.Ex) && 'x',
 	(mod & Modifier.Break) && 'b',
 	(mod & Modifier.Firework) && 'f'
 ].filter(x => x).join('');
-
-// TODO: 处理非默认等待时值
-const fmtSlides = (slide: Slide) => [slide, ...(slide.subsequent ?? [])].map(x => [
-	x.shape, x.midPos, x.endPos, fmtLen(x.shoot), fmtMod(slide)
+const fmtSlides = (slide: Slide, bpm: number) => [slide, ...(slide.subsequent ?? [])].map(x => [
+	x.shape, x.midPos, x.endPos, fmtLen(x.shoot, x.waitFactor === 1 ? undefined : bpm * x.waitFactor), fmtMod(slide)
 ]).flat().join('');
-function fmtNotes(notes: Note[]) {
-	ok(notes[0].type === 'measure');
 
-	let result = '', cnt = notes[0].measure;
-	let isNote = false; // 上一个是不是实 note；如果不是就不需要用 '/' 标记双押
+// TODO: 现在每行仍然保证了只有一个 Measure ({...}) 语句。得想办法支持更多的。
+// 把 cnt 换成 resolution 可能就能支持了.jpg
+function fmtNotes(notes: Note[], cnt: number, bpm: number) {
+	let result = '', isNote = false; // 上一个是不是实 note；如果不是就不需要用 '/' 标记双押
 	for (const note of notes) {
 		if (note.pseudo)
 			result += '`';
-		else if (note.offset)
-			result += ','.repeat(note.offset), cnt -= note.offset;
-		else if (isNote)
+		else if (note.offset) {
+			result += ','.repeat(note.offset);
+			cnt -= note.offset;
+		} else if (isNote)
 			result += '/';
 
 		isNote = true;
 		switch (note.type) {
 			case 'bpm':
-				result += `(${note.bpm})`, isNote = false;
+				result += `(${bpm = note.bpm})`, isNote = false;
 				break;
 			case 'measure':
-				result += `{${note.measure}}`, isNote = false;
+				result += `{${note.measure}}`, isNote = false; // TODO: 如果要支持多个 measure 这里得加东西
 				break;
 			case 'tap': case 'touchtap':
 				result += `${note.pos}${fmtMod(note)}`;
@@ -86,7 +103,7 @@ function fmtNotes(notes: Note[]) {
 					if (isStar && !note.children) result += '$'; // naked star
 					if (note.children) {
 						if (!isStar) result += '@'; // "unattached" tap
-						result += note.children.map(fmtSlides).join('*');
+						result += note.children.map(x => fmtSlides(x, bpm)).join('*');
 					}
 				}
 				break;
@@ -95,7 +112,7 @@ function fmtNotes(notes: Note[]) {
 				break;
 			case 'slide':
 				result += note.pos + '?';
-				result += fmtSlides(note);
+				result += fmtSlides(note, bpm);
 				break;
 		}
 	}
@@ -115,34 +132,19 @@ export function dumpSimai(this: Ma2File, _config: Config = {}) {
 	].sort((x, y) => x.tick - y.tick);
 
 	const resolution = this.header.resolutionTime;
+	let curBpm = 0;
 	for (let line = 0, i = 0; i < sortedMa2Notes.length - 1; line++) {
 		const end = (line + 1) * resolution;
 		const endIndex = sortedMa2Notes.findIndex(x => x.tick >= end, i);
 		const ma2Notes = sortedMa2Notes.slice(i, endIndex);
 
-		const ticks = [resolution];
-		let pseudoEach = false;
-		for (let j = 0; j < ma2Notes.length; j++) {
-			if (j) {
-				if (ma2Notes[j].tick - ma2Notes[j - 1].tick === config.pseudoEachTicks)
-					pseudoEach = true;
-				else if (ma2Notes[j].tick > ma2Notes[j - 1].tick)
-					pseudoEach = false;
-			}
-			if (pseudoEach) continue;
-			if ('parent' in ma2Notes[j]) continue;
-
-			ticks.push(ma2Notes[j].tick);
-		}
-		const d = gcd(...ticks);
-		if (d === 1)
-			console.log(ticks);
+		const d = getMeasure(ma2Notes);
 
 		const notes = [{ type: 'measure', offset: 0, measure: resolution / d }] as Note[];
-		let lastTick = 0, lastOffset = 0;
+		let lastTick = 0, lastMeasure = 0;
 		for (const ma2Note of ma2Notes) {
 			const tick = ma2Note.tick % resolution;
-			const offset = (tick / d) | 0;
+			const measure = (tick / d) | 0;
 
 			let note: Omit<Note, 'offset' | 'pseudo'> | undefined = undefined;
 			if ('parent' in ma2Note) continue;
@@ -160,7 +162,7 @@ export function dumpSimai(this: Ma2File, _config: Config = {}) {
 						note = touchHold(getPos(ma2Note), getLen(this, ma2Note.tick, ma2Note.len), ma2Note.effect === TouchEffectType.Eff1 ? Modifier.Firework : 0);
 						break;
 					case 'bpm':
-						note = bpm(ma2Note.bpm);
+						note = bpm(curBpm = ma2Note.bpm);
 						break;
 					case 'meter':
 						break;
@@ -171,19 +173,45 @@ export function dumpSimai(this: Ma2File, _config: Config = {}) {
 
 			if (note) {
 				const fullNote = note as Note;
-				fullNote.pseudo = !!(tick % d) && lastTick < tick;
-				fullNote.offset = offset - lastOffset;
-
-				notes.push(fullNote);
+				fullNote.pseudo = note.type !== 'bpm' && lastTick + config.pseudoEachTicks === tick;
+				if (fullNote.pseudo || tick === lastTick) // 能用 ` 和 / 就一直用，尽可能不更新 lastMeasure
+					fullNote.offset = 0;
+				else { // ` 和 / 不会更新 measure，所以要一路把之前的都补回来
+					fullNote.offset = measure - lastMeasure;
+					lastMeasure = measure;
+				}
+				lastTick = tick;
+				if (note.type === 'bpm' && measure === 0)
+					notes.unshift(fullNote);
+				else
+					notes.push(fullNote);
 			}
-			lastTick = tick, lastOffset = offset;
 		}
 
-		chart.push(fmtNotes(notes));
+		chart.push(fmtNotes(notes, resolution / d, curBpm));
 		i = endIndex;
 	}
 	chart.push('E');
 	return chart.join('\n');
+
+	function getMeasure(ma2Notes: typeof sortedMa2Notes) {
+		const ticks = [resolution];
+		let pseudoEach = false;
+		for (let j = 0; j < ma2Notes.length; j++) {
+			if (j) {
+				if (ma2Notes[j].tick - ma2Notes[j - 1].tick === config.pseudoEachTicks &&
+					ma2Notes[j].type !== 'bpm') // BPM 伪双押不当作伪双押。例子：000410_00.ma2
+					pseudoEach = true;
+				else if (ma2Notes[j].tick > ma2Notes[j - 1].tick)
+					pseudoEach = false;
+			}
+			if (pseudoEach) continue;
+			if ('parent' in ma2Notes[j]) continue;
+
+			ticks.push(ma2Notes[j].tick);
+		}
+		return gcd(...ticks);
+	}
 }
 
 function processTap(ma2: Ma2File, ma2Note: any): Tap | undefined {
@@ -203,15 +231,22 @@ function processSlide(ma2: Ma2File, ma2Note: any, parent?: Slide): Slide | undef
 		type: 'slide',
 		...getSimaiShape(ma2Note),
 		pos: ma2Note.pos + 1, endPos: ma2Note.endPos + 1,
-		wait: getLen(ma2, ma2Note.tick, ma2Note.wait) ?? { denomi: 1, num: 0 },
+		waitFactor:
+			ma2Note.type === Def.ConnectSlide ?
+				1 : // ConnectSlide 的 wait 一定是 0
+				4 * ma2Note.wait / ma2.header.resolutionTime,
 		shoot: getLen(ma2, ma2Note.tick + ma2Note.wait, ma2Note.shoot) ?? { denomi: 1, num: 0 },
 		mod: modifierList[ma2Note.type],
 	};
 	if (parent)
 		parent.subsequent?.push(note);
 	if (ma2Note.child) {
-		if (!parent) note.subsequent = [];
-		processSlide(ma2, ma2Note.child, note);
+		if (parent)
+			processSlide(ma2, ma2Note.child, parent);
+		else {
+			note.subsequent = [];
+			processSlide(ma2, ma2Note.child, note);
+		}
 	}
 	return note;
 }

@@ -20,7 +20,6 @@ export enum Def {
 	ExBreakSlide,
 	ExBreakStar,
 	ConnectSlide,
-	Invalid = -1,
 }
 
 export enum BaseDef {
@@ -45,7 +44,7 @@ export const recordDefNames = Object.freeze([
 	'STR', 'BST', 'XST',
 	'TTP', 'THO',
 	'BXX', 'BHO', 'BXH', 'BSL', null, null, 'XBS', null
-] as const satisfies Omit<Record<Def, string | null>, Def.Invalid>);
+] as const satisfies Record<Def, string | null>);
 
 const v103 = [
 	'TAP', 'BRK', 'XTP',
@@ -66,7 +65,7 @@ export const defNames = Object.freeze({
 		'NMTTP', 'NMTHO',
 		'BXTAP', 'BRHLD', 'BXHLD', 'Invalid', 'Invalid', 'Invalid', 'BXSTR', 'Invalid'
 	],
-} satisfies Record<string, Omit<Record<Def, keyof typeof Ma2RecordDef>, Def.Invalid>>);
+} satisfies Record<string, Record<Def, keyof typeof Ma2RecordDef>>);
 
 const f = <
 	V extends number, E extends string, N extends string, C extends number, D extends number, B extends BaseDef
@@ -94,8 +93,6 @@ export const data = Object.freeze({
 	16: f(10, 'ExBreakSlide', 'EXブレイクスライド', 0, 0, BaseDef.Slide),
 	17: f(10, 'ExBreakStar', 'EXブレイク☆', 5, 5, BaseDef.Tap),
 	18: f(10, 'ConnectSlide', '接続スライド', 8, 8, BaseDef.Slide),
-
-	[-1]: f(-1, 'Invalid', '', -1, -1, BaseDef.Invalid),
 } satisfies Record<Def, any>);
 
 export default { Def, BaseDef, data };

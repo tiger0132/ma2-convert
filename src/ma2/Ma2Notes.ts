@@ -1,6 +1,6 @@
 import { Def as Ma2RecordDef, SlideType, fmt, data as recordData, slideNames, totalRecordKeys } from './RecordId';
 import { Def as Ma2NotesDef, defNames, recordDefNames, slidePrefixes } from './NotesTypeId';
-import { Ma2File } from '.';
+import { Ma2File } from './index';
 import { Ma2Record, TouchNoteSize, TouchEffectType, TouchSensorType } from './Ma2Record';
 import { ok } from 'assert';
 
@@ -14,7 +14,7 @@ export type Tap = {
 	type: typeof tapTypes[number];
 	children?: Slide[];
 } & Common;
-type Hold = { type: typeof holdTypes[number], len: number } & Common;
+export type Hold = { type: typeof holdTypes[number], len: number } & Common;
 export type Slide = {
 	type: typeof slideTypes[number];
 	shape: SlideType,
@@ -24,29 +24,29 @@ export type Slide = {
 	parent?: Tap | Slide;
 	child?: Slide;
 } & Common;
-type TouchTap = {
+export type TouchTap = {
 	type: Ma2NotesDef.TouchTap;
 	sensor: TouchSensorType;
 	effect: TouchEffectType;
 	size: TouchNoteSize;
 } & Common;
-type TouchHold = {
+export type TouchHold = {
 	type: Ma2NotesDef.TouchHold;
 	len: number;
 	sensor: TouchSensorType;
 	effect: TouchEffectType;
 	size: TouchNoteSize;
 } & Common;
-type Note = Tap | Hold | Slide | TouchTap | TouchHold;
+export type Note = Tap | Hold | Slide | TouchTap | TouchHold;
 // const isEach = (x: NoteData, y: NoteData) => {
 // 	if (x.type === Ma2NotesDef.ConnectSlide || y.type === Ma2NotesDef.ConnectSlide) return false;
 // 	return x.type
 // }
 
-const isTap = (x: Ma2NotesDef): x is typeof tapTypes[number] => tapTypes.includes(x as any);
-const isHold = (x: Ma2NotesDef): x is typeof holdTypes[number] => holdTypes.includes(x as any);
-const isSlide = (x: Ma2NotesDef): x is typeof slideTypes[number] => slideTypes.includes(x as any);
-const isStar = (x: Ma2NotesDef): x is typeof starTypes[number] => starTypes.includes(x as any);
+const isTap = (x: Ma2NotesDef | null): x is typeof tapTypes[number] => tapTypes.includes(x as any);
+const isHold = (x: Ma2NotesDef | null): x is typeof holdTypes[number] => holdTypes.includes(x as any);
+const isSlide = (x: Ma2NotesDef | null): x is typeof slideTypes[number] => slideTypes.includes(x as any);
+const isStar = (x: Ma2NotesDef | null): x is typeof starTypes[number] => starTypes.includes(x as any);
 export const isTapNote = (x: Note | { type: any }): x is Tap => isTap(x.type);
 export const isHoldNote = (x: Note | { type: any }): x is Hold => isHold(x.type);
 export const isSlideNote = (x: Note | { type: any }): x is Slide => isSlide(x.type);
@@ -71,7 +71,7 @@ export class Ma2Notes {
 		else if (isSlide(type))
 			this.notes.push({
 				type,
-				shape: recordData[rec.recId].slideType,
+				shape: recordData[rec.recId].slideType!,
 				wait: rec.getSlideWaitLen(),
 				shoot: rec.getSlideShootLen(),
 				endPos: this.ma2File.mirror.tap(rec.getSlideEndPos()),
@@ -261,7 +261,54 @@ export class Ma2Notes {
 			}
 		bpmInfo.defaultBPM = mv / 1e3;
 	}
-	dumpMa2() {
+
+	checkNotes(): string | null {
+		for (const note of this.notes) {
+			if (isSlideNote(note)) {
+				const dis = Math.abs(note.pos - note.endPos);
+				switch (note.shape) {
+					case SlideType.Slide_Straight:
+						if (dis === 1) return `Invalid slide "${note.pos + 1}-${note.endPos + 1}": distance should be at least 2.`;
+						break;
+
+					// case SlideType.Slide_Circle_L:
+					// 	if (note.type === Ma2NotesDef.ConnectSlide || note.child) break;
+					// 	if ((note.pos - note.endPos + 8) % 8 === 1) return `Invalid slide "SCL ${note.pos + 1} ${note.endPos + 1}": distance should be at least 2.`;
+					// 	break;
+					// case SlideType.Slide_Circle_R:
+					// 	if (note.type === Ma2NotesDef.ConnectSlide || note.child) break;
+					// 	if ((note.endPos - note.pos + 8) % 8 === 1) return `Invalid slide "SCR ${note.pos + 1} ${note.endPos + 1}": distance should be at least 2.`;
+					// 	break;
+
+					case SlideType.Slide_Thunder_L:
+						if (dis !== 4) return `Invalid slide "${note.pos + 1}s${note.endPos + 1}": distance should be exactly 4.`;
+						break;
+					case SlideType.Slide_Thunder_R:
+						if (dis !== 4) return `Invalid slide "${note.pos + 1}z${note.endPos + 1}": distance should be exactly 4.`;
+						break;
+					case SlideType.Slide_Fan:
+						if (dis !== 4) return `Invalid slide "${note.pos + 1}w${note.endPos + 1}": distance should be exactly 4.`;
+						break;
+
+					case SlideType.Slide_Corner:
+						if (dis === 0 || dis === 4) return `Invalid slide "${note.pos + 1}v${note.endPos + 1}": distance should not be 0 or 4.`;
+						break;
+
+					case SlideType.Slide_Skip_L:
+						const cwd = (note.endPos - note.pos + 8) % 8;
+						if (cwd === 0 || cwd > 4) return `Invalid slide "${note.pos + 1}V${(note.pos + 6) % 8 + 1}${note.endPos + 1}": clockwise distance should be 1~4.`;
+						break;
+					case SlideType.Slide_Skip_R:
+						const acwd = (note.pos - note.endPos + 8) % 8;
+						if (acwd === 0 || acwd > 4) return `Invalid slide "${note.pos + 1}V${(note.pos + 2) % 8 + 1}${note.endPos + 1}": anticlockwise distance should be 1~4.`;
+						break;
+				}
+			}
+		}
+		return null;
+	}
+
+	dumpMa2(stats: boolean) {
 		const result = [];
 
 		const version = this.ma2File.header.version[1];
@@ -278,7 +325,6 @@ export class Ma2Notes {
 			else if (isHoldNote(note))
 				result.push(fmt($(names[note.type]), ...commonArg, note.len));
 			else if (isSlideNote(note)) {
-				ok(note.shape !== -1, 'Invalid slide type');
 				const name = $(slideNames[note.shape]);
 				if (version === '1.02.00' || version === '1.03.00') {
 					ok(note.type === Ma2NotesDef.Slide);
@@ -309,10 +355,11 @@ export class Ma2Notes {
 			else
 				ok(false, 'wtf');
 		}
-
-		result.push('');
-		for (const k of totalRecordKeys[version])
-			result.push(fmt(k, this.stats[k]));
+		if (stats) {
+			result.push('');
+			for (const k of totalRecordKeys[version])
+				result.push(fmt(k, this.stats[k]));
+		}
 
 		return result.join('\n');
 	}

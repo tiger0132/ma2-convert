@@ -1,11 +1,11 @@
-import { Ma2File } from '.';
+import { Ma2File } from './index';
 import { Ma2Record } from './Ma2Record';
 import { Def as Ma2RecordDef, fmt } from './RecordId';
 
-type BPMChangeData = { bpm: number, tick: number };
-type MeterChangeData = { denomi: number, num: number, tick: number };
-type ClickData = { tick: number };
-type BarData = { numTotal: number, numBar: number, tick: number };
+export type BPMChangeData = { bpm: number, tick: number };
+export type MeterChangeData = { denomi: number, num: number, tick: number };
+export type ClickData = { tick: number };
+export type BarData = { numTotal: number, numBar: number, tick: number };
 export class Ma2Composition {
 	bpmList: BPMChangeData[] = [];
 	meterList: MeterChangeData[] = [];

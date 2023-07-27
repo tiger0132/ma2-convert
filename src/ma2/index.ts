@@ -2,9 +2,11 @@ import { Ma2Category, Def as Ma2RecordDef, SlideType, data as recordData } from 
 import { Ma2Composition } from './Ma2Composition';
 import { Ma2Header } from './Ma2Header';
 import { Ma2Notes } from './Ma2Notes';
-import { Ma2Record } from './Ma2Record';
+import { Ma2Record, TouchNoteSize } from './Ma2Record';
 import { OptionalFields, id } from '@/lib/utils';
 import { dumpSimai } from '@/simai/dump';
+import { parseSimai } from '@/simai/parse';
+import { ok } from 'assert';
 
 export interface Mirror {
 	tap(pos: number): number;
@@ -16,18 +18,35 @@ export const MirrorPreset = Object.freeze({
 	LR: {
 		tap: pos => 7 - pos,
 		E: pos => -pos & 7,
-		slide: type => type === -1 ? -1 : [0, 1, 3, 2, 5, 4, 7, 6, 8, 10, 9, 12, 11, 13][type],
+		slide: type => [0, 1, 3, 2, 5, 4, 7, 6, 8, 10, 9, 12, 11, 13][type],
 	},
 } satisfies Record<string, Mirror>);
 
-export interface LoadConfig {
+export interface Ma2LoadConfig {
 	mode?: 'header' | 'full';
 	mirror?: Mirror;
 }
-const defaultConfig = Object.freeze({
+const ma2DefaultConfig = Object.freeze({
 	mode: 'full',
 	mirror: MirrorPreset.NORMAL,
-} satisfies OptionalFields<LoadConfig>);
+} satisfies OptionalFields<Ma2LoadConfig>);
+
+export interface SimaiLoadConfig {
+	strict?: boolean;
+	mirror?: Mirror;
+	resolution?: number;
+	pseudoEachTicks?: number;
+	touchSize?: TouchNoteSize;
+	version?: '1.02.00' | '1.03.00' | '1.04.00';
+};
+const simaiDefaultConfig = Object.freeze({
+	strict: true,
+	mirror: MirrorPreset.NORMAL,
+	resolution: 384,
+	pseudoEachTicks: 4,
+	touchSize: TouchNoteSize.M1,
+	version: '1.04.00',
+} satisfies OptionalFields<SimaiLoadConfig>);
 
 export class Ma2File {
 	mode?: 'header' | 'full';
@@ -43,9 +62,24 @@ export class Ma2File {
 	calcBarGrid(tick: number) {
 		return [tick / this.header.resolutionTime | 0, tick % this.header.resolutionTime] as const;
 	}
+	calc() {
+		const err = this.notes.checkNotes();
+		// if (err) logger.error(err);
+		ok(!err, err ?? '');
 
-	static fromMa2(str: string, _config?: LoadConfig) {
-		const config = { ...defaultConfig, ..._config };
+		// this.notes.calcNoteTiming();
+		this.notes.calcEach();
+		this.notes.calcSlide();
+		this.notes.calcEndTiming();
+		this.notes.calcBPMInfo();
+		// this.notes.calcBarList();
+		// this.notes.calcSoflanList();
+		// this.notes.calcClickList();
+		this.notes.calcTotal();
+	}
+
+	static fromMa2(str: string, _config?: Ma2LoadConfig) {
+		const config = { ...ma2DefaultConfig, ..._config };
 		const result = new Ma2File(config.mirror);
 		const list: Ma2Record[] = [];
 
@@ -66,12 +100,14 @@ export class Ma2File {
 		if (result.mode === 'header') return result;
 
 		// parse bpm
+		const bpmSet = new Set<number>(); // 去重。官谱真的有 BPM 重复的情况：000556_00.ma2
 		for (const rec of list)
-			if (rec.recId === Ma2RecordDef.BPM)
-				result.composition.bpmList.push({
-					tick: result.calcTick(rec.getBar(), rec.getGrid()),
-					bpm: rec.getF32(3),
-				});
+			if (rec.recId === Ma2RecordDef.BPM) {
+				const tick = result.calcTick(rec.getBar(), rec.getGrid());
+				if (bpmSet.has(tick)) continue;
+				bpmSet.add(tick);
+				result.composition.bpmList.push({ tick, bpm: rec.getF32(3) });
+			}
 		result.composition.bpmList.sort((x, y) => x.tick - y.tick);
 
 		// parse rest
@@ -95,26 +131,32 @@ export class Ma2File {
 					break;
 			}
 		}
-		// result.notes.calcNoteTiming();
-		result.notes.calcEach();
-		result.notes.calcSlide();
-		result.notes.calcEndTiming();
-		result.notes.calcBPMInfo();
-		// result.notes.calcBarList();
-		// result.notes.calcSoflanList();
-		// result.notes.calcClickList();
-		result.notes.calcTotal();
+		result.calc();
 
 		return result;
 	}
-	dumpMa2() {
+	dumpMa2(stats = true) {
 		return [
 			this.header.dumpMa2(),
 			this.composition.dumpMa2(),
-			this.notes.dumpMa2(),
+			this.notes.dumpMa2(stats),
 			'',
 		].join('\n\n');
 	}
 
+	static fromSimai(str: string, _config?: SimaiLoadConfig) {
+		const config = { ...simaiDefaultConfig, ..._config };
+		const result = new Ma2File(config.mirror);
+
+		result.header.version[1] = config.version;
+		result.header.resolutionTime = config.resolution;
+		result.header.clickFirst = config.resolution;
+		result.header.isFes = false;
+
+		parseSimai(result, str, config);
+		result.calc();
+
+		return result;
+	}
 	readonly dumpSimai = dumpSimai.bind(this);
 }

@@ -6,7 +6,7 @@ export enum TouchSensorType { B, C, E, A, D }
 export enum TouchEffectType { None, Eff1, Invalid = -1 }
 export enum TouchNoteSize { M1, L1 }
 
-const getSensorType = (str: string) => isKeyOf(str, TouchSensorType) ? TouchSensorType[str] : TouchSensorType.B;
+export const getSensorType = (str: string) => isKeyOf(str, TouchSensorType) ? TouchSensorType[str] : TouchSensorType.B;
 const getNoteSize = (str: string) => isKeyOf(str, TouchNoteSize) ? TouchNoteSize[str] : TouchNoteSize.M1;
 
 export class Ma2Record {

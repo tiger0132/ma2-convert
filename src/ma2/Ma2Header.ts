@@ -1,4 +1,4 @@
-import { Ma2File } from '.';
+import { Ma2File } from './index';
 import { Ma2Record } from './Ma2Record';
 import { Def as Ma2RecordDef, fmt } from './RecordId';
 

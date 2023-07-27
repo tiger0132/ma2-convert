@@ -20,7 +20,7 @@ export type TouchHold = { type: 'touchhold', pos: string, len?: Len, mod: number
 export type Slide = {
 	type: 'slide';
 	pos: number, endPos: number, midPos?: number;
-	wait: Len, shoot: Len;
+	waitFactor: number, shoot: Len;
 	shape: SimaiSlideType;
 	mod: number;
 
