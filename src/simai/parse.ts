@@ -3,14 +3,14 @@
 
 import { SimaiSlideType } from './index';
 import { SlideType as Ma2SlideType, SlideType } from '../ma2/RecordId';
-import { Ma2File, SimaiLoadConfig } from '@/ma2';
-import { gcd, max, notVoid } from '@/lib/utils';
+import { Ma2File, SimaiLoadConfig } from '../ma2';
+import { gcd, max, notVoid } from '../lib/utils';
 import { ok } from 'assert';
-import { Def } from '@/ma2/NotesTypeId';
-import { TouchEffectType, TouchSensorType, getSensorType } from '@/ma2/Ma2Record';
+import { Def } from '../ma2/NotesTypeId';
+import { TouchEffectType, TouchSensorType, getSensorType } from '../ma2/Ma2Record';
 import debug from 'debug';
-import { Ma2 } from '@/ma2/Ma2Notes';
-import { BPMChangeData, ClickData, MeterChangeData } from '@/ma2/Ma2Composition';
+import { Ma2 } from '../ma2/Ma2Notes';
+import { BPMChangeData, ClickData, MeterChangeData } from '../ma2/Ma2Composition';
 
 type Chars<S extends string> = S extends `${infer C}${infer R}` ? C | Chars<R> : never;
 class Reader {

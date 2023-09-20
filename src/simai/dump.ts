@@ -6,7 +6,7 @@ import { TouchEffectType, TouchSensorType } from '../ma2/Ma2Record';
 import { OptionalFields, gcd, notVoid } from '../lib/utils';
 import { Ma2File } from '../ma2';
 import { BPM, Hold, Len, Modifier, Note, SimaiSlideType, Slide, Tap, TouchHold, TouchTap } from './index';
-import { Def } from '@/ma2/NotesTypeId';
+import { Def } from '../ma2/NotesTypeId';
 import { SlideType as Ma2SlideType } from '../ma2/RecordId';
 import { inspect } from 'util';
 

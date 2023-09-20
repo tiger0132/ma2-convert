@@ -3,9 +3,9 @@ import { Ma2Composition } from './Ma2Composition';
 import { Ma2Header } from './Ma2Header';
 import { Ma2Notes } from './Ma2Notes';
 import { Ma2Record, TouchNoteSize } from './Ma2Record';
-import { OptionalFields, id } from '@/lib/utils';
-import { dumpSimai } from '@/simai/dump';
-import { parseSimai } from '@/simai/parse';
+import { OptionalFields, id } from '../lib/utils';
+import { dumpSimai } from '../simai/dump';
+import { parseSimai } from '../simai/parse';
 import { ok } from 'assert';
 
 export interface Mirror {
@@ -182,4 +182,4 @@ export { Ma2 } from './Ma2Notes';
 export { BPMChangeData, BarData, ClickData, MeterChangeData } from './Ma2Composition';
 export { TouchEffectType, TouchNoteSize, TouchSensorType } from './Ma2Record';
 export { Def as NoteTypeDef } from './NotesTypeId';
-export { Def as RecordIdDef, SlideType, slideNames, fmt } from './RecordId'; 
+export { Def as RecordIdDef, SlideType, slideNames, fmt } from './RecordId';

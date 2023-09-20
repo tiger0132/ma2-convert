@@ -7,11 +7,6 @@
       "dts": true
     },
     "target": "es2022",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    },
     "loose": true,
     "externalHelpers": true
   },

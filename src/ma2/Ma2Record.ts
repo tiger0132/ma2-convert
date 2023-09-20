@@ -1,6 +1,6 @@
 import { Def as Ma2RecordDef, data as recordData } from './RecordId';
 import { data as paramData } from './ParamId';
-import { isKeyOf } from '@/lib/utils';
+import { isKeyOf } from '../lib/utils';
 
 export enum TouchSensorType { B, C, E, A, D }
 export enum TouchEffectType { None, Eff1, Invalid = -1 }

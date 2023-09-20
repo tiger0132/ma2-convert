@@ -31,11 +31,6 @@
 		"emitDecoratorMetadata": true,
 		"outDir": "./dist",
 		"baseUrl": "./",
-		"paths": {
-			"@/*": [
-				"src/*"
-			]
-		},
 		"plugins": [
 			{
 				"transform": "@zerollup/ts-transform-paths",
