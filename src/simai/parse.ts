@@ -278,7 +278,7 @@ export function parseSimai(ma2File: Ma2File, str: string, config: Required<Simai
 	 */
 	function parseSlide(modSet: Partial<Record<Chars<'bx$@!?h'>, true>>, mod: number, reader: Reader, pos: number, connect?: boolean) {
 		if (!connect && !modSet['!'] && !modSet['?']) mod |= 8; // star
-		const [, shape, midPos, endPos, , bpm, , denomi, num] = reader.readRegex(/^(-|<|>|\^|p|q|s|z|w|v|pp|qq|V(\d))(\d)\[((\d+(\.\d*)?)##)?(\d+):(\d+)\]/);
+		const [, shape, midPos, endPos, , bpm, , denomi, num] = reader.readRegex(/^(-|<|>|\^|p|q|s|z|w|v|pp|qq|V(\d))(\d)\[((\d+(\.\d*)?)#)?(\d+):(\d+)\]/);
 		const modSet2 = reader.readCharset('bx');
 		const mod2 = (modSet2.x ? 1 : 0) | (modSet2.b ? 2 : 0);
 		const slideType = connect ? Def.ConnectSlide : defMap.slide[mod2];
