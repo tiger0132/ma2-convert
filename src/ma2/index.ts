@@ -177,3 +177,8 @@ export class Ma2File {
 	}
 	readonly dumpSimai = dumpSimai.bind(this);
 }
+
+export { Ma2 } from './Ma2Notes';
+export { TouchEffectType, TouchNoteSize, TouchSensorType } from './Ma2Record';
+export { Def as NoteTypeDef } from './NotesTypeId';
+export { Def as RecordIdDef, SlideType, slideNames, fmt } from './RecordId'; 

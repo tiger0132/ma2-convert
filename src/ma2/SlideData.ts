@@ -1,4 +1,3 @@
-import { Slide } from './Ma2Notes';
 import { SlideType } from './RecordId';
 
 enum HitPoint {

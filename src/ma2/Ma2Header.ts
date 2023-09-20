@@ -1,17 +1,8 @@
-import { Ma2File } from './index';
 import { Ma2Record } from './Ma2Record';
 import { Def as Ma2RecordDef, fmt } from './RecordId';
 
-type Version = { major: number, minor: number, release: number };
 type BPMInfo = { defaultBPM: number, minBPM: number, maxBPM: number, firstBPM: number };
 type MeterInfo = { denomi: number, num: number };
-function parseVersion(s: string): Version {
-	const [major, minor, release] = s.split('.').map(x => parseInt(x, 10)).concat(0, 0, 0);
-	return { major, minor, release };
-}
-function formatVersion({ major, minor, release }: Version) {
-	return `${major.toString()}.${minor.toString().padStart(2, '0')}.${release.toString().padStart(2, '0')}`;
-}
 
 export class Ma2Header {
 	readonly format = 'MA2'; // C2S MA2 M2S SDT SCT SZT SRT

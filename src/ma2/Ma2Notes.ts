@@ -1,4 +1,4 @@
-import { Def as Ma2RecordDef, SlideType, fmt, data as recordData, slideNames, totalRecordKeys } from './RecordId';
+import { SlideType, fmt, data as recordData, slideNames, totalRecordKeys } from './RecordId';
 import { Def as Ma2NotesDef, defNames, recordDefNames, slidePrefixes } from './NotesTypeId';
 import { Ma2File } from './index';
 import { Ma2Record, TouchNoteSize, TouchEffectType, TouchSensorType } from './Ma2Record';
@@ -9,53 +9,57 @@ const holdTypes = Object.freeze([Ma2NotesDef.Hold, Ma2NotesDef.ExHold, Ma2NotesD
 const slideTypes = Object.freeze([Ma2NotesDef.Slide, Ma2NotesDef.BreakSlide, Ma2NotesDef.ExSlide, Ma2NotesDef.ExBreakSlide, Ma2NotesDef.ConnectSlide] as const);
 const starTypes = Object.freeze([Ma2NotesDef.Star, Ma2NotesDef.BreakStar, Ma2NotesDef.ExStar, Ma2NotesDef.ExBreakStar] as const);
 
-type Common = { pos: number, tick: number };
-export type Tap = {
-	type: typeof tapTypes[number];
-	children?: Slide[];
-} & Common;
-export type Hold = { type: typeof holdTypes[number], len: number } & Common;
-export type Slide = {
-	type: typeof slideTypes[number];
-	shape: SlideType,
-	wait: number;
-	shoot: number;
-	endPos: number;
-	parent?: Tap | Slide;
-	child?: Slide;
-} & Common;
-export type TouchTap = {
-	type: Ma2NotesDef.TouchTap;
-	sensor: TouchSensorType;
-	effect: TouchEffectType;
-	size: TouchNoteSize;
-} & Common;
-export type TouchHold = {
-	type: Ma2NotesDef.TouchHold;
-	len: number;
-	sensor: TouchSensorType;
-	effect: TouchEffectType;
-	size: TouchNoteSize;
-} & Common;
-export type Note = Tap | Hold | Slide | TouchTap | TouchHold;
 // const isEach = (x: NoteData, y: NoteData) => {
 // 	if (x.type === Ma2NotesDef.ConnectSlide || y.type === Ma2NotesDef.ConnectSlide) return false;
 // 	return x.type
 // }
 
+export module Ma2 {
+	type Common = { pos: number, tick: number };
+	export type Tap = {
+		type: typeof tapTypes[number];
+		children?: Slide[];
+	} & Common;
+	export type Hold = { type: typeof holdTypes[number], len: number } & Common;
+	export type Slide = {
+		type: typeof slideTypes[number];
+		shape: SlideType,
+		wait: number;
+		shoot: number;
+		endPos: number;
+		parent?: Tap | Slide;
+		child?: Slide;
+	} & Common;
+	export type TouchTap = {
+		type: Ma2NotesDef.TouchTap;
+		sensor: TouchSensorType;
+		effect: TouchEffectType;
+		size: TouchNoteSize;
+	} & Common;
+	export type TouchHold = {
+		type: Ma2NotesDef.TouchHold;
+		len: number;
+		sensor: TouchSensorType;
+		effect: TouchEffectType;
+		size: TouchNoteSize;
+	} & Common;
+	export type Note = Tap | Hold | Slide | TouchTap | TouchHold;
+
+	export const isTapNote = (x: Note | { type: any }): x is Tap => isTap(x.type);
+	export const isHoldNote = (x: Note | { type: any }): x is Hold => isHold(x.type);
+	export const isSlideNote = (x: Note | { type: any }): x is Slide => isSlide(x.type);
+	export const isStarNote = (x: Note | { type: any }): x is Tap => isStar(x.type);
+}
+
 const isTap = (x: Ma2NotesDef | null): x is typeof tapTypes[number] => tapTypes.includes(x as any);
 const isHold = (x: Ma2NotesDef | null): x is typeof holdTypes[number] => holdTypes.includes(x as any);
 const isSlide = (x: Ma2NotesDef | null): x is typeof slideTypes[number] => slideTypes.includes(x as any);
 const isStar = (x: Ma2NotesDef | null): x is typeof starTypes[number] => starTypes.includes(x as any);
-export const isTapNote = (x: Note | { type: any }): x is Tap => isTap(x.type);
-export const isHoldNote = (x: Note | { type: any }): x is Hold => isHold(x.type);
-export const isSlideNote = (x: Note | { type: any }): x is Slide => isSlide(x.type);
-export const isStarNote = (x: Note | { type: any }): x is Tap => isStar(x.type);
 
 const concat = <S extends string, T extends string>(s: S, t: T) => (s + t) as `${S}${T}`;
 
 export class Ma2Notes {
-	notes: Note[] = [];
+	notes: Ma2.Note[] = [];
 	stats = {} as Record<typeof totalRecordKeys[keyof typeof totalRecordKeys][number], number>;
 
 	constructor(private ma2File: Ma2File) { }
@@ -103,15 +107,15 @@ export class Ma2Notes {
 		for (let i = 0; i < this.notes.length; i++) {
 			const p = this.notes[i];
 			// TODO: simai 里有 1@-5 这样的语法，似乎可以通过让 Slide 认 Tap 做爹来实现，可以作为一个可开关的逻辑加入。
-			if (isStarNote(p))
+			if (Ma2.isStarNote(p))
 				for (const q of this.notes.slice(i + 1)) {
 					if (q.tick > p.tick) break;
-					if (isSlideNote(q) && p.pos == q.pos) { // Slide 认 Star 做爹
+					if (Ma2.isSlideNote(q) && p.pos == q.pos) { // Slide 认 Star 做爹
 						if (!p.children) p.children = [];
 						q.parent = p, p.children.push(q);
 					}
 				}
-			if (isSlideNote(p)) {
+			if (Ma2.isSlideNote(p)) {
 				const end = p.tick + p.wait + p.shoot;
 				for (const q of this.notes.slice(i + 1)) {
 					if (q.tick > end) break;
@@ -207,9 +211,9 @@ export class Ma2Notes {
 
 		for (const note of this.notes) {
 			let endTime = note.tick;
-			if (isSlideNote(note))
+			if (Ma2.isSlideNote(note))
 				endTime = note.tick + note.wait + note.shoot;
-			else if (isHoldNote(note) || note.type === Ma2NotesDef.TouchHold)
+			else if (Ma2.isHoldNote(note) || note.type === Ma2NotesDef.TouchHold)
 				endTime = note.tick + note.len;
 
 			startGameTime = Math.min(startGameTime, note.tick);
@@ -264,7 +268,7 @@ export class Ma2Notes {
 
 	checkNotes(): string | null {
 		for (const note of this.notes) {
-			if (isSlideNote(note)) {
+			if (Ma2.isSlideNote(note)) {
 				const dis = Math.abs(note.pos - note.endPos);
 				switch (note.shape) {
 					case SlideType.Slide_Straight:
@@ -320,11 +324,11 @@ export class Ma2Notes {
 			const { tick, pos } = note;
 			const commonArg = [...this.ma2File.calcBarGrid(tick), pos] as const;
 
-			if (isTapNote(note))
+			if (Ma2.isTapNote(note))
 				result.push(fmt($(names[note.type]), ...commonArg));
-			else if (isHoldNote(note))
+			else if (Ma2.isHoldNote(note))
 				result.push(fmt($(names[note.type]), ...commonArg, note.len));
-			else if (isSlideNote(note)) {
+			else if (Ma2.isSlideNote(note)) {
 				const name = $(slideNames[note.shape]);
 				if (version === '1.02.00' || version === '1.03.00') {
 					ok(note.type === Ma2NotesDef.Slide);
