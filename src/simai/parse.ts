@@ -313,6 +313,7 @@ export function parseSimai(ma2File: Ma2File, str: string, config: Required<Simai
 
 function parseBPMList(ma2: Ma2Cache, str: string, config: Required<SimaiLoadConfig>, resolution: bigint) {
 	let tick = 0n, measure = 0n;
+	ma2.meters.push({ denomi: 4, num: 4, tick: 0n });
 	for (const section of str.split(',')) {
 		const bpmMatch = section.match(config.strict ? /^\((\d+(\.\d*)?)\)/ : /\((\d+(\.\d*)?)\)/);
 		if (bpmMatch)

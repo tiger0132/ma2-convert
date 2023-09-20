@@ -62,6 +62,22 @@ export class Ma2File {
 	calcBarGrid(tick: number) {
 		return [tick / this.header.resolutionTime | 0, tick % this.header.resolutionTime] as const;
 	}
+	calcSec(tick: number, len: number) {
+		const { bpmList } = this.composition;
+		const curBpmIdx = bpmList.findLastIndex(x => x.tick <= tick);
+		let result = 0;
+		for (let i = curBpmIdx; i < bpmList.length; i++) {
+			const { bpm } = bpmList[i];
+			const duration = i === bpmList.length - 1 ?
+				Infinity :
+				bpmList[i + 1].tick - Math.max(tick, bpmList[i].tick);
+			const ticks = Math.min(len, duration);
+
+			result += 240 / bpm / this.header.resolutionTime * ticks;
+			if (!(len -= ticks)) break;
+		}
+		return result;
+	}
 	calc() {
 		const err = this.notes.checkNotes();
 		// if (err) logger.error(err);
@@ -100,7 +116,7 @@ export class Ma2File {
 		if (result.mode === 'header') return result;
 
 		// parse bpm
-		const bpmSet = new Set<number>(); // 去重。官谱真的有 BPM 重复的情况：000556_00.ma2
+		const bpmSet = new Set<number>(); // 去重。官谱真的有 BPM 重复的情况。例子：000556_00.ma2
 		for (const rec of list)
 			if (rec.recId === Ma2RecordDef.BPM) {
 				const tick = result.calcTick(rec.getBar(), rec.getGrid());
@@ -148,6 +164,7 @@ export class Ma2File {
 		const config = { ...simaiDefaultConfig, ..._config };
 		const result = new Ma2File(config.mirror);
 
+		result.header.version[0] = '0.00.00';
 		result.header.version[1] = config.version;
 		result.header.resolutionTime = config.resolution;
 		result.header.clickFirst = config.resolution;

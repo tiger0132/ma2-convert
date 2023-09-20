@@ -65,17 +65,28 @@ function getLen(ma2: Ma2File, tick: number, len: number): Len | undefined {
 	return { denomi: q, num: p };
 }
 
-const fmtLen = (x?: Len, bpm?: number) => x ? `[${bpm !== undefined ? `${bpm}##` : ''}${x.denomi}:${x.num}]` : '';
+function scale(len: Len, factor: Len): Len {
+	const p = len.num * factor.num;
+	const q = len.denomi * factor.denomi;
+	const d = gcd(p, q);
+	return { denomi: q / d, num: p / d };
+}
+
+// # 语法中后面的时值竟然是按照等待的 bpm 计算
+// 纯纯有病行为
+const fmtLen = (x?: Len, bpm?: number) => x ? `[${bpm !== undefined ? `${bpm}#` : ''}${x.denomi}:${x.num}]` : '';
 const fmtMod = ({ mod }: { mod: number }) => [
 	(mod & Modifier.Ex) && 'x',
 	(mod & Modifier.Break) && 'b',
 	(mod & Modifier.Firework) && 'f'
 ].filter(x => x).join('');
 const fmtSlides = (slide: Slide, bpm: number) => [slide, ...(slide.subsequent ?? [])].map(x => [
-	x.shape, x.midPos, x.endPos, fmtLen(x.shoot, x.waitFactor === 1 ? undefined : bpm * x.waitFactor), fmtMod(slide)
+	x.shape, x.midPos, x.endPos,
+	x.waitFactor === 1 ? fmtLen(x.shoot) : fmtLen(scale(x.shoot, { denomi: bpm, num: bpm * x.waitFactor }), bpm * x.waitFactor),
+	fmtMod(slide)
 ]).flat().join('');
 
-// TODO: 现在每行仍然保证了只有一个 Measure ({...}) 语句。得想办法支持更多的。
+// TODO: 现在每行仍然保证了只有一个 Measure（即 {...}）语句。得想办法支持更多的。
 // 把 cnt 换成 resolution 可能就能支持了.jpg
 function fmtNotes(notes: Note[], cnt: number, bpm: number) {
 	let result = '', isNote = false; // 上一个是不是实 note；如果不是就不需要用 '/' 标记双押
@@ -234,7 +245,7 @@ function processSlide(ma2: Ma2File, ma2Note: any, parent?: Slide): Slide | undef
 		waitFactor:
 			ma2Note.type === Def.ConnectSlide ?
 				1 : // ConnectSlide 的 wait 一定是 0
-				4 * ma2Note.wait / ma2.header.resolutionTime,
+				ma2.header.resolutionTime / (ma2Note.wait * 4),
 		shoot: getLen(ma2, ma2Note.tick + ma2Note.wait, ma2Note.shoot) ?? { denomi: 1, num: 0 },
 		mod: modifierList[ma2Note.type],
 	};

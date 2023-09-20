@@ -233,7 +233,7 @@ export class Ma2Notes {
 		if (!bpmList.length) return;
 
 		const bpmInfo = this.ma2File.header.bpmInfo;
-		bpmInfo.firstBPM = bpmList[0].bpm;
+		bpmInfo.defaultBPM = bpmInfo.firstBPM = bpmList[0].bpm;
 		bpmInfo.maxBPM = Math.max(...bpmList.map(x => x.bpm));
 		bpmInfo.minBPM = Math.min(...bpmList.map(x => x.bpm));
 		if (bpmList.length === 1) return;
