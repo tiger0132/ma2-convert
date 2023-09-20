@@ -1,7 +1,7 @@
 import { ok } from 'assert';
 import debug from 'debug';
 
-import { Slide as Ma2Slide, isHoldNote, isSlideNote, isTapNote } from '../ma2/Ma2Notes';
+import { Ma2 } from '../ma2/Ma2Notes';
 import { TouchEffectType, TouchSensorType } from '../ma2/Ma2Record';
 import { OptionalFields, gcd, notVoid } from '../lib/utils';
 import { Ma2File } from '../ma2';
@@ -226,18 +226,18 @@ export function dumpSimai(this: Ma2File, _config: Config = {}) {
 }
 
 function processTap(ma2: Ma2File, ma2Note: any): Tap | undefined {
-	if (!isTapNote(ma2Note)) return;
+	if (!Ma2.isTapNote(ma2Note)) return;
 	const note: Tap = { type: 'tap', pos: ma2Note.pos + 1, mod: modifierList[ma2Note.type] };
 	if (ma2Note.children)
 		note.children = ma2Note.children.map(x => processSlide(ma2, x)).filter(notVoid);
 	return note;
 }
 function processHold(ma2: Ma2File, ma2Note: any): Hold | undefined {
-	if (!isHoldNote(ma2Note)) return;
+	if (!Ma2.isHoldNote(ma2Note)) return;
 	return { type: 'hold', pos: ma2Note.pos + 1, len: getLen(ma2, ma2Note.tick, ma2Note.len), mod: modifierList[ma2Note.type] };
 }
 function processSlide(ma2: Ma2File, ma2Note: any, parent?: Slide): Slide | undefined {
-	if (!isSlideNote(ma2Note)) return;
+	if (!Ma2.isSlideNote(ma2Note)) return;
 	const note: Slide = {
 		type: 'slide',
 		...getSimaiShape(ma2Note),
@@ -261,7 +261,7 @@ function processSlide(ma2: Ma2File, ma2Note: any, parent?: Slide): Slide | undef
 	}
 	return note;
 }
-function getSimaiShape(slide: Ma2Slide): { shape: SimaiSlideType, midPos?: number } {
+function getSimaiShape(slide: Ma2.Slide): { shape: SimaiSlideType, midPos?: number } {
 	switch (slide.shape) {
 		case Ma2SlideType.Slide_Straight: return { shape: '-' };
 		case Ma2SlideType.Slide_Curve_L: return { shape: 'p' };

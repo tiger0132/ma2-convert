@@ -179,6 +179,7 @@ export class Ma2File {
 }
 
 export { Ma2 } from './Ma2Notes';
+export { BPMChangeData, BarData, ClickData, MeterChangeData } from './Ma2Composition';
 export { TouchEffectType, TouchNoteSize, TouchSensorType } from './Ma2Record';
 export { Def as NoteTypeDef } from './NotesTypeId';
 export { Def as RecordIdDef, SlideType, slideNames, fmt } from './RecordId'; 

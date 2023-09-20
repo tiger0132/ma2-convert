@@ -1,3 +1,4 @@
+import { Ma2 } from './Ma2Notes';
 import { SlideType } from './RecordId';
 
 enum HitPoint {
@@ -362,7 +363,7 @@ function getSlideTypeLength(shape: SlideType, start: number, end: number) {
 	return len;
 }
 
-export function getSlideHitArea(slide: Slide): HitArea[] {
+export function getSlideHitArea(slide: Ma2.Slide): HitArea[] {
 	const { shape, pos, endPos } = slide;
 	const len = getSlideTypeLength(shape, pos, endPos);
 

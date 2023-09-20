@@ -9,7 +9,7 @@ import { ok } from 'assert';
 import { Def } from '@/ma2/NotesTypeId';
 import { TouchEffectType, TouchSensorType, getSensorType } from '@/ma2/Ma2Record';
 import debug from 'debug';
-import { Hold as Ma2Hold, Tap as Ma2Tap, Slide as Ma2Slide, TouchTap as Ma2TouchTap, TouchHold as Ma2TouchHold } from '@/ma2/Ma2Notes';
+import { Ma2 } from '@/ma2/Ma2Notes';
 import { BPMChangeData, ClickData, MeterChangeData } from '@/ma2/Ma2Composition';
 
 type Chars<S extends string> = S extends `${infer C}${infer R}` ? C | Chars<R> : never;
@@ -47,11 +47,11 @@ class Reader {
 }
 
 type Replace<T extends object, U extends keyof T> = Omit<T, U> & Record<U, bigint>;
-type ExtTap = Replace<Ma2Tap, 'tick'>;
-type ExtHold = Replace<Ma2Hold, 'tick' | 'len'>;
-type ExtSlide = Replace<Ma2Slide, 'tick' | 'wait' | 'shoot'>
-type ExtTouchTap = Replace<Ma2TouchTap, 'tick'>
-type ExtTouchHold = Replace<Ma2TouchHold, 'tick' | 'len'>
+type ExtTap = Replace<Ma2.Tap, 'tick'>;
+type ExtHold = Replace<Ma2.Hold, 'tick' | 'len'>;
+type ExtSlide = Replace<Ma2.Slide, 'tick' | 'wait' | 'shoot'>
+type ExtTouchTap = Replace<Ma2.TouchTap, 'tick'>
+type ExtTouchHold = Replace<Ma2.TouchHold, 'tick' | 'len'>
 type ExtNote = ExtTap | ExtHold | ExtSlide | ExtTouchTap | ExtTouchHold;
 
 type Ma2Cache = {
